@@ -9,6 +9,10 @@ import base64
 
 app = Flask(__name__)
 CORS(app)
+load_dotenv()
+@app.route("/")
+def home():
+    return "AI Travel Guide API is running!"
 MURF_API_KEY = os.getenv("MURF_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -112,6 +116,4 @@ def generate_audio_guide():
     return {
         "description": text_description,
         "audioBase64": encoded_audio
-                }
-
-app.run(debug=True)
+    }
