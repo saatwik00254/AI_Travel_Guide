@@ -101,6 +101,26 @@ document.querySelectorAll('.place-card:not(.search-preview-card)').forEach(card 
     selectDestination(card.dataset.place, card.dataset.image, card);
   });
 });
+// Search Destination
+const searchInput = document.getElementById('searchInput');
+const searchButton = document.getElementById('searchBtn');
+
+console.log("Search button:", searchButton);
+console.log("Search input:", searchInput);
+
+searchButton.addEventListener('click', () => {
+  const place = searchInput.value.trim();
+
+  console.log("Search button clicked!");
+  console.log("Entered place:", place);
+
+  if (!place) {
+    alert('Please enter a destination.');
+    return;
+  }
+
+  alert("You searched for: " + place);
+});
 
 // Option Toggles (History Type)
 const lengthButtons = document.querySelectorAll('[data-group="length"] button');
