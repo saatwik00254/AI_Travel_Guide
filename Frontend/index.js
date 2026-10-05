@@ -105,7 +105,7 @@ document.querySelectorAll('.place-card:not(.search-preview-card)').forEach(card 
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchBtn');
 
-searchButton.addEventListener('click', () => {
+searchButton.addEventListener('click', async () => {
   const place = searchInput.value.trim();
 
   if (!place) {
@@ -113,11 +113,37 @@ searchButton.addEventListener('click', () => {
     return;
   }
 
-  // Temporary image for searched destination
-  const image = `https://source.unsplash.com/800x500/?${encodeURIComponent(place)}`;
+  searchButton.disabled = true;
+  searchButton.textContent = 'Searching...';
 
-  // Open the experience panel for the searched destination
-  selectDestination(place, image);
+  try {
+    const response = await fetch(
+      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(place)}&gsrnamespace=0&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=800&format=json&origin=*`
+    );
+
+    const data = await response.json();
+
+    const pages = data.query?.pages;
+    const page = pages ? Object.values(pages)[0] : null;
+
+    let image = '';
+
+    if (page?.thumbnail?.source) {
+      image = page.thumbnail.source;
+    } else {
+      image = 'https://via.placeholder.com/800x500?text=No+Image+Available';
+    }
+
+    // Use the searched destination
+    selectDestination(place, image);
+
+  } catch (error) {
+    console.error('Search error:', error);
+    alert('Could not find the destination image. Please try again.');
+  } finally {
+    searchButton.disabled = false;
+    searchButton.textContent = 'Explore';
+  }
 });
 
 // Option Toggles (History Type)
