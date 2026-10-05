@@ -105,21 +105,19 @@ document.querySelectorAll('.place-card:not(.search-preview-card)').forEach(card 
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchBtn');
 
-console.log("Search button:", searchButton);
-console.log("Search input:", searchInput);
-
 searchButton.addEventListener('click', () => {
   const place = searchInput.value.trim();
-
-  console.log("Search button clicked!");
-  console.log("Entered place:", place);
 
   if (!place) {
     alert('Please enter a destination.');
     return;
   }
 
-  alert("You searched for: " + place);
+  // Temporary image for searched destination
+  const image = `https://source.unsplash.com/800x500/?${encodeURIComponent(place)}`;
+
+  // Open the experience panel for the searched destination
+  selectDestination(place, image);
 });
 
 // Option Toggles (History Type)
