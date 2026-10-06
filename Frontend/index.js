@@ -145,6 +145,12 @@ searchButton.addEventListener('click', async () => {
     searchButton.textContent = 'Explore';
   }
 });
+// Allow Enter key to search
+searchInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    searchButton.click();
+  }
+});
 
 // Option Toggles (History Type)
 const lengthButtons = document.querySelectorAll('[data-group="length"] button');
