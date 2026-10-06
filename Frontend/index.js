@@ -289,88 +289,138 @@ document
 // ============================================================
 // SEARCH DESTINATION
 // ============================================================
-
 async function searchDestination(inputElement, buttonElement) {
 
   const rawPlace = inputElement.value.trim();
 
-
-  // Empty search
   if (!rawPlace) {
-
     alert("Please enter a destination.");
-
     inputElement.focus();
-
     return;
   }
 
-
-  // Disable button
   buttonElement.disabled = true;
-
   const originalButtonText = buttonElement.textContent;
-
   buttonElement.textContent = "Searching...";
-
 
   try {
 
-    // Wikipedia API
-    const wikipediaURL =
-      `https://en.wikipedia.org/w/api.php?` +
-      `action=query` +
-      `generator=search` +
-      `gsrsearch=${encodeURIComponent(rawPlace)}` +
-      `gsrnamespace=0` +
-      `gsrlimit=1` +
-      `prop=pageimages|info` +
-      `inprop=url` +
-      `piprop=thumbnail` +
-      `pithumbsize=1000` +
-      `format=json` +
-      `origin=*`;
+    // ----------------------------------------------------
+    // METHOD 1: Wikipedia REST API
+    // ----------------------------------------------------
 
+    const restURL =
+      `https://en.wikipedia.org/w/rest.php/v1/search/page` +
+      `?q=${encodeURIComponent(rawPlace)}` +
+      `&limit=1`;
 
-    const response = await fetch(wikipediaURL);
+    let page = null;
 
+    try {
 
-    if (!response.ok) {
-      throw new Error("Wikipedia search failed.");
-    }
+      const restResponse = await fetch(restURL, {
+        method: "GET"
+      });
 
+      if (restResponse.ok) {
 
-    const data = await response.json();
+        const restData = await restResponse.json();
 
+        if (
+          restData.pages &&
+          restData.pages.length > 0
+        ) {
 
-    const pages = data.query?.pages;
+          page = restData.pages[0];
 
+        }
+      }
 
-    const page = pages
-      ? Object.values(pages)[0]
-      : null;
+    } catch (restError) {
 
-
-    // ======================================================
-    // CHECK IF DESTINATION EXISTS
-    // ======================================================
-
-    if (!page) {
-
-      throw new Error(
-        "Destination not found. Please try another place."
+      console.warn(
+        "Wikipedia REST search failed:",
+        restError
       );
 
     }
 
 
-    // ======================================================
-    // GET IMAGE
-    // ======================================================
+    // ----------------------------------------------------
+    // METHOD 2: Wikipedia Action API fallback
+    // ----------------------------------------------------
+
+    if (!page) {
+
+      const apiURL =
+        `https://en.wikipedia.org/w/api.php?` +
+        `action=query` +
+        `generator=search` +
+        `gsrsearch=${encodeURIComponent(rawPlace)}` +
+        `gsrnamespace=0` +
+        `gsrlimit=1` +
+        `prop=pageimages` +
+        `piprop=thumbnail` +
+        `pithumbsize=1000` +
+        `format=json` +
+        `origin=*`;
+
+      const apiResponse = await fetch(apiURL);
+
+      if (!apiResponse.ok) {
+        throw new Error("Wikipedia search request failed.");
+      }
+
+      const apiData = await apiResponse.json();
+
+      const pages = apiData.query?.pages;
+
+      page = pages
+        ? Object.values(pages)[0]
+        : null;
+    }
+
+
+    // ----------------------------------------------------
+    // NO RESULT
+    // ----------------------------------------------------
+
+    if (!page) {
+
+      throw new Error(
+        `No destination found for "${rawPlace}".`
+      );
+
+    }
+
+
+    // ----------------------------------------------------
+    // DESTINATION NAME
+    // ----------------------------------------------------
+
+    let displayPlace =
+      page.title || rawPlace;
+
+    displayPlace =
+      formatPlaceName(displayPlace);
+
+
+    // ----------------------------------------------------
+    // IMAGE
+    // ----------------------------------------------------
 
     let image = "";
 
 
+    // REST API image
+    if (page.thumbnail?.url) {
+
+      image = page.thumbnail.url;
+
+    }
+
+
+    // Action API image
     if (page.thumbnail?.source) {
 
       image = page.thumbnail.source;
@@ -378,44 +428,31 @@ async function searchDestination(inputElement, buttonElement) {
     }
 
 
-    // ======================================================
+    // ----------------------------------------------------
     // FALLBACK IMAGE
-    // ======================================================
+    // ----------------------------------------------------
 
     if (!image) {
 
       image =
         `https://placehold.co/1000x650/f5f5f5/555555?text=` +
-        encodeURIComponent(rawPlace);
+        encodeURIComponent(displayPlace);
 
     }
 
 
-    // ======================================================
-    // DESTINATION NAME
-    // ======================================================
+    // ----------------------------------------------------
+    // SHOW DESTINATION
+    // ----------------------------------------------------
 
-    let displayPlace = rawPlace;
-
-
-    if (page.title) {
-
-      displayPlace = page.title;
-
-    }
+    selectDestination(
+      displayPlace,
+      image
+    );
 
 
-    displayPlace = formatPlaceName(displayPlace);
+    // Clear search fields
 
-
-    // ======================================================
-    // SHOW RESULT
-    // ======================================================
-
-    selectDestination(displayPlace, image);
-
-
-    // Clear both search boxes
     if (desktopSearchInput) {
       desktopSearchInput.value = "";
     }
@@ -427,19 +464,21 @@ async function searchDestination(inputElement, buttonElement) {
 
   } catch (error) {
 
-    console.error("Search error:", error);
-
+    console.error(
+      "Destination search error:",
+      error
+    );
 
     alert(
-      error.message ||
-      "Could not find this destination. Please try again."
+      "Unable to search for this destination right now. Please try again."
     );
 
   } finally {
 
     buttonElement.disabled = false;
 
-    buttonElement.textContent = originalButtonText;
+    buttonElement.textContent =
+      originalButtonText;
 
   }
 }
