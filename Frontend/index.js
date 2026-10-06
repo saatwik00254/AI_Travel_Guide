@@ -1,10 +1,38 @@
-// --- Constants ---
+// ============================================================
+// AI TRAVEL GUIDE - FRONTEND JAVASCRIPT
+// ============================================================
+
+
+// =========================
+// VOICE CONFIGURATION
+// =========================
+
 const VOICES = {
-  English: { Male: "Matthew", Female: "Alicia" },
-  Hindi: { Male: "Aman", Female: "Namrita" },
-  Tamil: { Male: "Murali", Female: "Iniya" },
-  Telugu: { Male: "Zion", Female: "Josie" }
+  English: {
+    Male: "Matthew",
+    Female: "Alicia"
+  },
+
+  Hindi: {
+    Male: "Aman",
+    Female: "Namrita"
+  },
+
+  Tamil: {
+    Male: "Murali",
+    Female: "Iniya"
+  },
+
+  Telugu: {
+    Male: "Zion",
+    Female: "Josie"
+  }
 };
+
+
+// =========================
+// LANGUAGE CONFIGURATION
+// =========================
 
 const LOCALES = {
   English: "en-US",
@@ -14,354 +42,583 @@ const LOCALES = {
 };
 
 
-// --- State ---
+// =========================
+// APPLICATION STATE
+// =========================
+
 const state = {
-  place: '',
-  image: '',
-  length: 'Summary',
-  voice: 'Male'
+  place: "",
+  image: "",
+  length: "Summary",
+  voice: "Male"
 };
 
 
-// --- DOM Elements ---
-const cardsContainer = document.querySelector('.cards');
-const experiencePanel = document.getElementById('experience');
-const previewTitle = document.getElementById('previewTitle');
-const audioSection = document.getElementById('audioSection');
-const audioPlayer = document.getElementById('audioPlayer');
-const transcriptText = document.getElementById('scriptText');
-const generateButton = document.getElementById('generateBtn');
-const languageSelect = document.getElementById('selectLanguage');
-const closeButton = document.getElementById('closeExperience');
+// =========================
+// DOM ELEMENTS
+// =========================
 
-const searchInput = document.getElementById('searchInput');
-const searchButton = document.getElementById('searchBtn');
+// Destination cards
+const cardsContainer = document.querySelector(".cards");
 
-const searchPreviewCard = document.getElementById('searchPreviewCard');
-const searchPreviewImage = document.getElementById('searchPreviewImage');
-const searchPreviewTitle = document.getElementById('searchPreviewTitle');
+// Experience section
+const experiencePanel = document.getElementById("experience");
+const previewTitle = document.getElementById("previewTitle");
 
-const transcriptToggle = document.getElementById('transcriptToggle');
-const transcriptContent = document.getElementById('transcriptContent');
-const transcriptArrow = document.getElementById('transcriptArrow');
+// Audio
+const audioSection = document.getElementById("audioSection");
+const audioPlayer = document.getElementById("audioPlayer");
+const transcriptText = document.getElementById("scriptText");
+
+// Generate button
+const generateButton = document.getElementById("generateBtn");
+
+// Language
+const languageSelect = document.getElementById("selectLanguage");
+
+// Close
+const closeButton = document.getElementById("closeExperience");
+
+// Search result card
+const searchPreviewCard = document.getElementById("searchPreviewCard");
+const searchPreviewImage = document.getElementById("searchPreviewImage");
+const searchPreviewTitle = document.getElementById("searchPreviewTitle");
+
+// Transcript
+const transcriptToggle = document.getElementById("transcriptToggle");
+const transcriptContent = document.getElementById("transcriptContent");
+const transcriptArrow = document.getElementById("transcriptArrow");
 
 
-// --- Helper Function ---
+// Desktop search
+const desktopSearchInput = document.getElementById("searchInput");
+const desktopSearchButton = document.getElementById("searchBtn");
+
+// Mobile search
+const mobileSearchInput = document.getElementById("mobileSearchInput");
+const mobileSearchButton = document.getElementById("mobileSearchBtn");
+
+
+// =========================
+// BACKEND API
+// =========================
+
+const GENERATE_AUDIO_GUIDE_API_URL =
+  "https://ai-travel-guide-cra3.onrender.com/generate-audio-guide";
+
+
+// ============================================================
+// FORMAT DESTINATION NAME
+// ============================================================
 
 function formatPlaceName(place) {
+
+  if (!place) {
+    return "";
+  }
+
   return place
     .trim()
-    .replace(/\s+/g, ' ')
-    .split(' ')
+    .split(/\s+/)
     .map(word => {
-      if (!word) return word;
 
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      if (word.length === 0) {
+        return word;
+      }
+
+      return word.charAt(0).toUpperCase() + word.slice(1);
+
     })
-    .join(' ');
+    .join(" ");
 }
 
 
-// --- Destination Selection ---
+// ============================================================
+// RESET AUDIO SECTION
+// ============================================================
+
+function resetAudioSection() {
+
+  audioSection.classList.add("hidden");
+
+  audioPlayer.pause();
+  audioPlayer.src = "";
+  audioPlayer.load();
+
+  transcriptText.textContent = "";
+
+  transcriptContent.classList.add("hidden");
+
+  transcriptArrow.classList.remove("rotate-180");
+
+  generateButton.textContent = "Generate Audio Guide";
+  generateButton.disabled = false;
+}
+
+
+// ============================================================
+// SELECT DESTINATION
+// ============================================================
 
 function selectDestination(place, image, clickedCard = null) {
 
   state.place = place;
   state.image = image;
 
-  // Update experience title
+  // Display destination name
   previewTitle.textContent = place;
 
-  cardsContainer.classList.add('faded');
+  // Fade/hide other cards
+  cardsContainer.classList.add("faded");
 
-  // Reset active cards
+
+  // Remove active state from every card
   document
-    .querySelectorAll('.place-card')
-    .forEach(card => card.classList.remove('active'));
+    .querySelectorAll(".place-card")
+    .forEach(card => {
+      card.classList.remove("active");
+    });
 
-  // Hide search result initially
-  searchPreviewCard.classList.add('hidden');
+
+  // Hide previous search result
+  searchPreviewCard.classList.add("hidden");
 
 
-  // Handle normal card or searched destination
+  // ========================================================
+  // NORMAL DESTINATION CARD
+  // ========================================================
+
   if (clickedCard) {
 
-    clickedCard.classList.add('active');
+    clickedCard.classList.add("active");
 
-  } else {
-
-    // Set searched destination image
-    searchPreviewImage.src = image;
-    searchPreviewImage.alt = `${place} tourist destination`;
-
-    // Set searched destination title
-    searchPreviewTitle.textContent = place;
-
-    // Show search result
-    searchPreviewCard.classList.remove('hidden');
-    searchPreviewCard.classList.add('active');
   }
 
 
-  // Reset audio section
-  audioSection.classList.add('hidden');
+  // ========================================================
+  // SEARCH RESULT CARD
+  // ========================================================
 
-  audioPlayer.src = '';
+  else {
 
-  transcriptText.textContent = '';
+    searchPreviewImage.src = image;
+    searchPreviewImage.alt = `${place} destination`;
 
-  generateButton.textContent = 'Generate Audio Guide';
+    searchPreviewTitle.textContent = place;
 
-  generateButton.disabled = false;
+    searchPreviewCard.classList.remove("hidden");
+    searchPreviewCard.classList.add("active");
+  }
+
+
+  // Reset previous audio
+  resetAudioSection();
 
 
   // Show experience panel
-  experiencePanel.classList.remove('hidden');
+  experiencePanel.classList.remove("hidden");
 
+  // Small delay allows CSS animation
   setTimeout(() => {
-    experiencePanel.classList.add('visible');
-  }, 10);
+    experiencePanel.classList.add("visible");
+  }, 20);
+
+
+  // Scroll to experience section on mobile
+  setTimeout(() => {
+
+    if (window.innerWidth < 640) {
+
+      experiencePanel.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+    }
+
+  }, 150);
 }
 
 
-// --- Deselect Destination ---
+// ============================================================
+// CLOSE DESTINATION
+// ============================================================
 
 function deselectDestination() {
 
-  experiencePanel.classList.remove('visible');
+  experiencePanel.classList.remove("visible");
 
   setTimeout(() => {
 
-    experiencePanel.classList.add('hidden');
+    experiencePanel.classList.add("hidden");
 
-    cardsContainer.classList.remove('faded');
+    cardsContainer.classList.remove("faded");
 
-    searchPreviewCard.classList.add('hidden');
+    searchPreviewCard.classList.add("hidden");
 
     document
-      .querySelectorAll('.place-card')
-      .forEach(card => card.classList.remove('active'));
+      .querySelectorAll(".place-card")
+      .forEach(card => {
+        card.classList.remove("active");
+      });
 
-  }, 300);
+  }, 350);
 }
 
 
-// --- Close Button ---
-
-closeButton.addEventListener('click', deselectDestination);
-
-
-// --- Existing Destination Cards ---
+// ============================================================
+// DESTINATION CARD CLICK
+// ============================================================
 
 document
-  .querySelectorAll('.place-card:not(.search-preview-card)')
+  .querySelectorAll(".place-card:not(.search-preview-card)")
   .forEach(card => {
 
-    card.addEventListener('click', () => {
+    card.addEventListener("click", () => {
 
-      selectDestination(
-        card.dataset.place,
-        card.dataset.image,
-        card
-      );
+      const place = card.dataset.place;
+      const image = card.dataset.image;
+
+      selectDestination(place, image, card);
 
     });
 
   });
 
 
-// =====================================================
+// ============================================================
 // SEARCH DESTINATION
-// =====================================================
+// ============================================================
 
-searchButton.addEventListener('click', async () => {
+async function searchDestination(inputElement, buttonElement) {
 
-  const rawPlace = searchInput.value.trim();
+  const rawPlace = inputElement.value.trim();
+
 
   // Empty search
   if (!rawPlace) {
 
-    alert('Please enter a destination.');
+    alert("Please enter a destination.");
 
-    searchInput.focus();
+    inputElement.focus();
 
     return;
   }
 
 
-  // Format destination name
-  const place = formatPlaceName(rawPlace);
+  // Disable button
+  buttonElement.disabled = true;
 
+  const originalButtonText = buttonElement.textContent;
 
-  // Loading state
-  searchButton.disabled = true;
-
-  searchButton.textContent = 'Searching...';
+  buttonElement.textContent = "Searching...";
 
 
   try {
 
     // Wikipedia API
-    const response = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(place)}&gsrnamespace=0&gsrlimit=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1000&inprop=url&format=json&origin=*`
-    );
+    const wikipediaURL =
+      `https://en.wikipedia.org/w/api.php?` +
+      `action=query` +
+      `generator=search` +
+      `gsrsearch=${encodeURIComponent(rawPlace)}` +
+      `gsrnamespace=0` +
+      `gsrlimit=1` +
+      `prop=pageimages|info` +
+      `inprop=url` +
+      `piprop=thumbnail` +
+      `pithumbsize=1000` +
+      `format=json` +
+      `origin=*`;
+
+
+    const response = await fetch(wikipediaURL);
 
 
     if (!response.ok) {
-
-      throw new Error('Wikipedia request failed');
-
+      throw new Error("Wikipedia search failed.");
     }
 
 
     const data = await response.json();
 
+
     const pages = data.query?.pages;
+
 
     const page = pages
       ? Object.values(pages)[0]
       : null;
 
 
-    // Get image
-    let image = '';
+    // ======================================================
+    // CHECK IF DESTINATION EXISTS
+    // ======================================================
 
-    if (page?.thumbnail?.source) {
+    if (!page) {
+
+      throw new Error(
+        "Destination not found. Please try another place."
+      );
+
+    }
+
+
+    // ======================================================
+    // GET IMAGE
+    // ======================================================
+
+    let image = "";
+
+
+    if (page.thumbnail?.source) {
 
       image = page.thumbnail.source;
 
     }
 
 
-    // Better fallback
+    // ======================================================
+    // FALLBACK IMAGE
+    // ======================================================
+
     if (!image) {
 
       image =
-        `https://placehold.co/1000x650/f5f5f5/555555?text=${encodeURIComponent(place)}`;
+        `https://placehold.co/1000x650/f5f5f5/555555?text=` +
+        encodeURIComponent(rawPlace);
 
     }
 
 
-    // Open destination
-    selectDestination(place, image);
+    // ======================================================
+    // DESTINATION NAME
+    // ======================================================
+
+    let displayPlace = rawPlace;
+
+
+    if (page.title) {
+
+      displayPlace = page.title;
+
+    }
+
+
+    displayPlace = formatPlaceName(displayPlace);
+
+
+    // ======================================================
+    // SHOW RESULT
+    // ======================================================
+
+    selectDestination(displayPlace, image);
+
+
+    // Clear both search boxes
+    if (desktopSearchInput) {
+      desktopSearchInput.value = "";
+    }
+
+    if (mobileSearchInput) {
+      mobileSearchInput.value = "";
+    }
 
 
   } catch (error) {
 
-    console.error('Search error:', error);
+    console.error("Search error:", error);
+
 
     alert(
-      'Unable to find this destination. Please check the spelling and try again.'
+      error.message ||
+      "Could not find this destination. Please try again."
     );
 
   } finally {
 
-    searchButton.disabled = false;
+    buttonElement.disabled = false;
 
-    searchButton.textContent = 'Explore';
-
-  }
-
-});
-
-
-// =====================================================
-// SEARCH USING ENTER KEY
-// =====================================================
-
-searchInput.addEventListener('keydown', (event) => {
-
-  if (event.key === 'Enter') {
-
-    event.preventDefault();
-
-    searchButton.click();
+    buttonElement.textContent = originalButtonText;
 
   }
+}
 
-});
+
+// ============================================================
+// DESKTOP SEARCH BUTTON
+// ============================================================
+
+if (desktopSearchButton) {
+
+  desktopSearchButton.addEventListener("click", () => {
+
+    searchDestination(
+      desktopSearchInput,
+      desktopSearchButton
+    );
+
+  });
+
+}
 
 
-// =====================================================
-// LENGTH / HISTORY TYPE
-// =====================================================
+// ============================================================
+// MOBILE SEARCH BUTTON
+// ============================================================
+
+if (mobileSearchButton) {
+
+  mobileSearchButton.addEventListener("click", () => {
+
+    searchDestination(
+      mobileSearchInput,
+      mobileSearchButton
+    );
+
+  });
+
+}
+
+
+// ============================================================
+// DESKTOP ENTER KEY
+// ============================================================
+
+if (desktopSearchInput) {
+
+  desktopSearchInput.addEventListener("keydown", event => {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
+
+      desktopSearchButton.click();
+
+    }
+
+  });
+
+}
+
+
+// ============================================================
+// MOBILE ENTER KEY
+// ============================================================
+
+if (mobileSearchInput) {
+
+  mobileSearchInput.addEventListener("keydown", event => {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
+
+      mobileSearchButton.click();
+
+    }
+
+  });
+
+}
+
+
+// ============================================================
+// DETAIL / LENGTH OPTIONS
+// ============================================================
 
 const lengthButtons =
   document.querySelectorAll('[data-group="length"] button');
 
-lengthButtons.forEach(btn => {
 
-  btn.addEventListener('click', () => {
+lengthButtons.forEach(button => {
 
-    lengthButtons.forEach(b =>
-      b.classList.remove('active')
-    );
+  button.addEventListener("click", () => {
 
-    btn.classList.add('active');
+    // Remove active from all
+    lengthButtons.forEach(btn => {
+      btn.classList.remove("active");
+    });
 
-    state.length = btn.dataset.value;
+
+    // Add active
+    button.classList.add("active");
+
+
+    // Update state
+    state.length = button.dataset.value;
 
   });
 
 });
 
 
-// =====================================================
-// VOICE GENDER
-// =====================================================
+// ============================================================
+// VOICE OPTIONS
+// ============================================================
 
 const voiceButtons =
   document.querySelectorAll('[data-group="voice"] button');
 
-voiceButtons.forEach(btn => {
 
-  btn.addEventListener('click', () => {
+voiceButtons.forEach(button => {
 
-    voiceButtons.forEach(b =>
-      b.classList.remove('active')
-    );
+  button.addEventListener("click", () => {
 
-    btn.classList.add('active');
+    // Remove active
+    voiceButtons.forEach(btn => {
+      btn.classList.remove("active");
+    });
 
-    state.voice = btn.dataset.value;
+
+    // Add active
+    button.classList.add("active");
+
+
+    // Update state
+    state.voice = button.dataset.value;
 
   });
 
 });
 
 
-// =====================================================
+// ============================================================
 // GENERATE AUDIO GUIDE
-// =====================================================
+// ============================================================
 
-const GENERATE_AUDIO_GUIDE_API_URL =
-  "https://ai-travel-guide-cra3.onrender.com/generate-audio-guide";
+generateButton.addEventListener("click", async () => {
 
-
-generateButton.addEventListener('click', async () => {
-
+  // Disable button
   generateButton.disabled = true;
 
   generateButton.textContent =
-    '⏳ Generating Audio...';
+    "⏳ Generating Audio...";
 
 
   try {
 
+    // Selected language
     const selectedLanguage =
       languageSelect.value;
 
+
+    // Selected voice
     const selectedVoice =
       state.voice;
 
 
+    // ======================================================
+    // SEND REQUEST TO YOUR EXISTING BACKEND
+    // ======================================================
+
     const response = await fetch(
       GENERATE_AUDIO_GUIDE_API_URL,
       {
-        method: 'POST',
+        method: "POST",
 
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json"
         },
 
         body: JSON.stringify({
@@ -379,14 +636,16 @@ generateButton.addEventListener('click', async () => {
             LOCALES[selectedLanguage]
 
         })
+
       }
     );
 
 
+    // Backend error
     if (!response.ok) {
 
       throw new Error(
-        `Generation failed: ${response.status}`
+        `Server error: ${response.status}`
       );
 
     }
@@ -395,15 +654,31 @@ generateButton.addEventListener('click', async () => {
     const data = await response.json();
 
 
-    // Display transcript
-    transcriptText.textContent =
-      data.description || 'No description available.';
+    // ======================================================
+    // DISPLAY TRANSCRIPT
+    // ======================================================
+
+    if (data.description) {
+
+      transcriptText.textContent =
+        data.description;
+
+    } else {
+
+      transcriptText.textContent =
+        "No transcript was returned.";
+
+    }
 
 
-    audioSection.classList.remove('hidden');
+    // Show audio section
+    audioSection.classList.remove("hidden");
 
 
-    // Display audio
+    // ======================================================
+    // DISPLAY AUDIO
+    // ======================================================
+
     if (data.audioBase64) {
 
       audioPlayer.src =
@@ -411,31 +686,52 @@ generateButton.addEventListener('click', async () => {
 
       audioPlayer.load();
 
-      audioPlayer.classList.remove('hidden');
+      audioPlayer.classList.remove("hidden");
 
       generateButton.textContent =
-        'Listen to Audio';
+        "Audio Ready ✓";
+
 
     } else {
 
-      audioPlayer.classList.add('hidden');
+      audioPlayer.classList.add("hidden");
 
       generateButton.textContent =
-        'Audio Not Available';
+        "Audio Not Available";
 
     }
 
 
-  } catch (err) {
+    // Scroll to generated result on mobile
+    setTimeout(() => {
 
-    console.error('Audio generation error:', err);
+      if (window.innerWidth < 640) {
 
-    alert(
-      'Audio generation failed. Please try again.'
+        audioSection.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });
+
+      }
+
+    }, 200);
+
+
+  } catch (error) {
+
+    console.error(
+      "Audio generation error:",
+      error
     );
 
+
+    alert(
+      "Audio generation failed. Please try again."
+    );
+
+
     generateButton.textContent =
-      'Generate Audio Guide';
+      "Generate Audio Guide";
 
     generateButton.disabled = false;
 
@@ -444,14 +740,38 @@ generateButton.addEventListener('click', async () => {
 });
 
 
-// =====================================================
+// ============================================================
 // TRANSCRIPT TOGGLE
-// =====================================================
+// ============================================================
 
-transcriptToggle.addEventListener('click', () => {
+if (transcriptToggle) {
 
-  transcriptContent.classList.toggle('hidden');
+  transcriptToggle.addEventListener("click", () => {
 
-  transcriptArrow.classList.toggle('rotate-180');
+    transcriptContent.classList.toggle("hidden");
+
+    transcriptArrow.classList.toggle("rotate-180");
+
+  });
+
+}
+
+
+// ============================================================
+// SEARCH RESULT CARD CLICK
+// ============================================================
+
+searchPreviewCard.addEventListener("click", () => {
+
+  if (!state.place) {
+    return;
+  }
+
+
+  // Keep the experience panel visible
+  experiencePanel.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 
 });
