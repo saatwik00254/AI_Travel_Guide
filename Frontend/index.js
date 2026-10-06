@@ -22,6 +22,7 @@ const state = {
   voice: 'Male'
 };
 
+
 // --- DOM Elements ---
 const cardsContainer = document.querySelector('.cards');
 const experiencePanel = document.getElementById('experience');
@@ -32,200 +33,425 @@ const transcriptText = document.getElementById('scriptText');
 const generateButton = document.getElementById('generateBtn');
 const languageSelect = document.getElementById('selectLanguage');
 const closeButton = document.getElementById('closeExperience');
+
+const searchInput = document.getElementById('searchInput');
+const searchButton = document.getElementById('searchBtn');
+
 const searchPreviewCard = document.getElementById('searchPreviewCard');
 const searchPreviewImage = document.getElementById('searchPreviewImage');
 const searchPreviewTitle = document.getElementById('searchPreviewTitle');
+
 const transcriptToggle = document.getElementById('transcriptToggle');
 const transcriptContent = document.getElementById('transcriptContent');
 const transcriptArrow = document.getElementById('transcriptArrow');
 
-// --- Functions ---
+
+// --- Helper Function ---
+
+function formatPlaceName(place) {
+  return place
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(word => {
+      if (!word) return word;
+
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+
+// --- Destination Selection ---
 
 function selectDestination(place, image, clickedCard = null) {
+
   state.place = place;
   state.image = image;
 
-  // Update UI content
+  // Update experience title
   previewTitle.textContent = place;
+
   cardsContainer.classList.add('faded');
 
-  // Reset previous states
-  document.querySelectorAll('.place-card').forEach(card => card.classList.remove('active'));
+  // Reset active cards
+  document
+    .querySelectorAll('.place-card')
+    .forEach(card => card.classList.remove('active'));
+
+  // Hide search result initially
   searchPreviewCard.classList.add('hidden');
 
-  // Handle Card Visibility
+
+  // Handle normal card or searched destination
   if (clickedCard) {
+
     clickedCard.classList.add('active');
+
   } else {
-    // If it's a search result, show the preview card
+
+    // Set searched destination image
     searchPreviewImage.src = image;
+    searchPreviewImage.alt = `${place} tourist destination`;
+
+    // Set searched destination title
     searchPreviewTitle.textContent = place;
+
+    // Show search result
     searchPreviewCard.classList.remove('hidden');
     searchPreviewCard.classList.add('active');
   }
 
-  // Reset Audio Panel
+
+  // Reset audio section
   audioSection.classList.add('hidden');
+
   audioPlayer.src = '';
+
   transcriptText.textContent = '';
+
   generateButton.textContent = 'Generate Audio Guide';
+
   generateButton.disabled = false;
 
-  // Show Panel with animation
+
+  // Show experience panel
   experiencePanel.classList.remove('hidden');
+
   setTimeout(() => {
     experiencePanel.classList.add('visible');
   }, 10);
 }
 
+
+// --- Deselect Destination ---
+
 function deselectDestination() {
+
   experiencePanel.classList.remove('visible');
 
-  // Wait for animation to finish before hiding
   setTimeout(() => {
+
     experiencePanel.classList.add('hidden');
+
     cardsContainer.classList.remove('faded');
+
     searchPreviewCard.classList.add('hidden');
-    document.querySelectorAll('.place-card').forEach(card => card.classList.remove('active'));
+
+    document
+      .querySelectorAll('.place-card')
+      .forEach(card => card.classList.remove('active'));
+
   }, 300);
 }
 
-// --- Event Listeners ---
 
-// Close Button
+// --- Close Button ---
+
 closeButton.addEventListener('click', deselectDestination);
 
-// Card Clicks
-document.querySelectorAll('.place-card:not(.search-preview-card)').forEach(card => {
-  card.addEventListener('click', () => {
-    selectDestination(card.dataset.place, card.dataset.image, card);
+
+// --- Existing Destination Cards ---
+
+document
+  .querySelectorAll('.place-card:not(.search-preview-card)')
+  .forEach(card => {
+
+    card.addEventListener('click', () => {
+
+      selectDestination(
+        card.dataset.place,
+        card.dataset.image,
+        card
+      );
+
+    });
+
   });
-});
-// Search Destination
-const searchInput = document.getElementById('searchInput');
-const searchButton = document.getElementById('searchBtn');
+
+
+// =====================================================
+// SEARCH DESTINATION
+// =====================================================
 
 searchButton.addEventListener('click', async () => {
-  const place = searchInput.value.trim();
 
-  if (!place) {
+  const rawPlace = searchInput.value.trim();
+
+  // Empty search
+  if (!rawPlace) {
+
     alert('Please enter a destination.');
+
+    searchInput.focus();
+
     return;
   }
 
+
+  // Format destination name
+  const place = formatPlaceName(rawPlace);
+
+
+  // Loading state
   searchButton.disabled = true;
+
   searchButton.textContent = 'Searching...';
 
+
   try {
+
+    // Wikipedia API
     const response = await fetch(
-      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(place)}&gsrnamespace=0&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=800&format=json&origin=*`
+      `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(place)}&gsrnamespace=0&gsrlimit=1&prop=pageimages|info&piprop=thumbnail&pithumbsize=1000&inprop=url&format=json&origin=*`
     );
+
+
+    if (!response.ok) {
+
+      throw new Error('Wikipedia request failed');
+
+    }
+
 
     const data = await response.json();
 
     const pages = data.query?.pages;
-    const page = pages ? Object.values(pages)[0] : null;
 
+    const page = pages
+      ? Object.values(pages)[0]
+      : null;
+
+
+    // Get image
     let image = '';
 
     if (page?.thumbnail?.source) {
+
       image = page.thumbnail.source;
-    } else {
-      image = 'https://via.placeholder.com/800x500?text=No+Image+Available';
+
     }
 
-    // Use the searched destination
+
+    // Better fallback
+    if (!image) {
+
+      image =
+        `https://placehold.co/1000x650/f5f5f5/555555?text=${encodeURIComponent(place)}`;
+
+    }
+
+
+    // Open destination
     selectDestination(place, image);
 
+
   } catch (error) {
+
     console.error('Search error:', error);
-    alert('Could not find the destination image. Please try again.');
+
+    alert(
+      'Unable to find this destination. Please check the spelling and try again.'
+    );
+
   } finally {
+
     searchButton.disabled = false;
+
     searchButton.textContent = 'Explore';
+
   }
+
 });
-// Allow Enter key to search
+
+
+// =====================================================
+// SEARCH USING ENTER KEY
+// =====================================================
+
 searchInput.addEventListener('keydown', (event) => {
+
   if (event.key === 'Enter') {
+
+    event.preventDefault();
+
     searchButton.click();
+
   }
+
 });
 
-// Option Toggles (History Type)
-const lengthButtons = document.querySelectorAll('[data-group="length"] button');
+
+// =====================================================
+// LENGTH / HISTORY TYPE
+// =====================================================
+
+const lengthButtons =
+  document.querySelectorAll('[data-group="length"] button');
+
 lengthButtons.forEach(btn => {
+
   btn.addEventListener('click', () => {
-    lengthButtons.forEach(b => b.classList.remove('active'));
+
+    lengthButtons.forEach(b =>
+      b.classList.remove('active')
+    );
+
     btn.classList.add('active');
+
     state.length = btn.dataset.value;
+
   });
+
 });
 
-// Option Toggles (Voice Gender)
-const voiceButtons = document.querySelectorAll('[data-group="voice"] button');
+
+// =====================================================
+// VOICE GENDER
+// =====================================================
+
+const voiceButtons =
+  document.querySelectorAll('[data-group="voice"] button');
+
 voiceButtons.forEach(btn => {
+
   btn.addEventListener('click', () => {
-    voiceButtons.forEach(b => b.classList.remove('active'));
+
+    voiceButtons.forEach(b =>
+      b.classList.remove('active')
+    );
+
     btn.classList.add('active');
+
     state.voice = btn.dataset.value;
+
   });
+
 });
 
 
-// Generate Audio guide button Logic
+// =====================================================
+// GENERATE AUDIO GUIDE
+// =====================================================
 
 const GENERATE_AUDIO_GUIDE_API_URL =
   "https://ai-travel-guide-cra3.onrender.com/generate-audio-guide";
 
+
 generateButton.addEventListener('click', async () => {
+
   generateButton.disabled = true;
-  generateButton.textContent = '⏳ Generating Audio...';
+
+  generateButton.textContent =
+    '⏳ Generating Audio...';
+
 
   try {
-    const selectedLanguage = languageSelect.value;
-    const selectedVoice = state.voice;
 
-    const response = await fetch(GENERATE_AUDIO_GUIDE_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        place: state.place,
-        answerType: state.length,
-        language: selectedLanguage,
-        voiceId: VOICES[selectedLanguage][selectedVoice],
-        locale: LOCALES[selectedLanguage]
-      })
-    });
+    const selectedLanguage =
+      languageSelect.value;
 
-    if (!response.ok) throw new Error('Generation failed');
+    const selectedVoice =
+      state.voice;
+
+
+    const response = await fetch(
+      GENERATE_AUDIO_GUIDE_API_URL,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+
+          place: state.place,
+
+          answerType: state.length,
+
+          language: selectedLanguage,
+
+          voiceId:
+            VOICES[selectedLanguage][selectedVoice],
+
+          locale:
+            LOCALES[selectedLanguage]
+
+        })
+      }
+    );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        `Generation failed: ${response.status}`
+      );
+
+    }
+
 
     const data = await response.json();
 
-    // Update UI with Result
-    transcriptText.textContent = data.description;
+
+    // Display transcript
+    transcriptText.textContent =
+      data.description || 'No description available.';
+
+
     audioSection.classList.remove('hidden');
 
+
+    // Display audio
     if (data.audioBase64) {
-      audioPlayer.src = `data:audio/mp3;base64,${data.audioBase64}`;
+
+      audioPlayer.src =
+        `data:audio/mp3;base64,${data.audioBase64}`;
+
       audioPlayer.load();
+
       audioPlayer.classList.remove('hidden');
-      generateButton.textContent = 'Listen to Audio';
+
+      generateButton.textContent =
+        'Listen to Audio';
+
     } else {
+
       audioPlayer.classList.add('hidden');
-      generateButton.textContent = 'Audio Not Available';
+
+      generateButton.textContent =
+        'Audio Not Available';
+
     }
 
+
   } catch (err) {
-    console.error(err);
-    alert('Generation failed. Please check your connection.');
-    generateButton.textContent = 'Generate Audio Guide';
+
+    console.error('Audio generation error:', err);
+
+    alert(
+      'Audio generation failed. Please try again.'
+    );
+
+    generateButton.textContent =
+      'Generate Audio Guide';
+
     generateButton.disabled = false;
+
   }
+
 });
 
-// Transcript Toggle
+
+// =====================================================
+// TRANSCRIPT TOGGLE
+// =====================================================
+
 transcriptToggle.addEventListener('click', () => {
+
   transcriptContent.classList.toggle('hidden');
+
   transcriptArrow.classList.toggle('rotate-180');
+
 });

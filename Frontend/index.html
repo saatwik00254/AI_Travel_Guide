@@ -265,13 +265,17 @@
 
         <div id="searchPreviewCard"
           class="place-card search-preview-card hidden bg-white rounded-[2rem] overflow-hidden border border-gray-100 cursor-pointer lg:[&.active]:w-[480px] lg:[&.active]:max-w-none">
-          <div class="overflow-hidden h-[200px] relative">
-            <img id="searchPreviewImage" src="" alt="Destination preview" class="w-full h-full object-cover">
+          <div class="overflow-hidden h-[220px] sm:h-[240px] relative bg-gray-100">
+            <img id="searchPreviewImage"
+                     src=""
+                    alt="Destination preview"
+                    class="w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105">
           </div>
           <div class="p-6">
             <span class="text-[11px] text-[#ff8a1f] font-bold uppercase tracking-widest">Search Result</span>
             <h3 id="searchPreviewTitle"
-              class="mt-2 mb-1 text-xl font-['Playfair_Display',_serif] font-bold text-gray-900"></h3>
+    class="mt-2 mb-1 text-xl sm:text-2xl font-['Playfair_Display',_serif] font-bold text-gray-900 leading-tight break-words">
+</h3>
             <p class="text-sm text-gray-500">Destination found via search.</p>
           </div>
         </div>
